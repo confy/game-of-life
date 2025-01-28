@@ -15,22 +15,22 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 )
-
 var (
-    WINDOW_WIDTH = 1000
-    WINDOW_HEIGHT = 1000
-    GRID_SIZE = 100
+    WindowWidth = 1000
+    WindowHeight = 250
+    GridColumns = 100
+    GridRows = GridColumns * WindowHeight / WindowWidth
     FPS = 5.0
-    SQUARE_SIZE = WINDOW_HEIGHT/GRID_SIZE
-    BACKGROUND_COLOR = color.NRGBA{R: 26, G: 26, B: 36, A: 255}
-    SQUARE_COLOR = color.NRGBA{R: 63, G: 78, B: 96, A: 255}
+    SquareSize = WindowWidth / GridColumns
+    BackgroundColor = color.NRGBA{R: 26, G: 26, B: 36, A: 255}
+    SquareColor = color.NRGBA{R: 63, G: 78, B: 96, A: 255}
 )
 
 func main() {
     go func() {
         w := new(app.Window)
         w.Option(app.Title("Game of Life"))
-        w.Option(app.Size(unit.Dp(WINDOW_WIDTH), unit.Dp(WINDOW_HEIGHT)))
+        w.Option(app.Size(unit.Dp(WindowWidth), unit.Dp(WindowHeight)))
         if err := draw(w); err != nil {
             log.Fatal(err)
         }
@@ -41,32 +41,33 @@ func main() {
 }
 
 type Grid struct {
-    size  int
+    width  int
+    height int
     cells [][]bool
 }
 
-func makeGrid(size int) Grid {
-    grid := Grid{size: size}
-    grid.cells = make([][]bool, grid.size)
+func makeGrid(width, height int) Grid {
+    grid := Grid{width, height, nil}
+    grid.cells = make([][]bool, grid.width)
     for i := range grid.cells {
-        grid.cells[i] = make([]bool, grid.size)
+        grid.cells[i] = make([]bool, grid.height)
     }
     return grid
 }
 
 func initRandomGrid(grid *Grid) {
-    for i := 0; i < grid.size; i++ {
-        for j := 0; j < grid.size; j++ {
+    for i := 0; i < grid.width; i++ {
+        for j := 0; j < grid.height; j++ {
             grid.cells[i][j] = rand.Intn(2) == 0
         }
     }
 }
 
 func updateGrid(grid *Grid) {
-    newGrid := makeGrid(grid.size)
+    newGrid := makeGrid(grid.width, grid.height)
     
-    for i := 0; i < grid.size; i++ {
-        for j := 0; j < grid.size; j++ {
+    for i := 0; i < grid.width; i++ {
+        for j := 0; j < grid.height; j++ {
             // count the number of live neighbors
             liveNeighbors := countLiveNeighbors(grid, i, j)
 
@@ -93,8 +94,8 @@ func countLiveNeighbors(grid *Grid, x, y int) int {
             newX, newY := x+i, y+j
             
             // Wrap around edges (toroidal grid)
-            newX = (newX + grid.size) % grid.size
-            newY = (newY + grid.size) % grid.size
+            newX = (newX + grid.width) % grid.width
+            newY = (newY + grid.height) % grid.height
             
             if grid.cells[newX][newY] {
                 liveNeighbors++
@@ -104,17 +105,17 @@ func countLiveNeighbors(grid *Grid, x, y int) int {
     return liveNeighbors
 }
 
-func drawSquare(ops *op.Ops, startX, startY, size int, color color.NRGBA) {
-    defer clip.Rect(image.Rect(startX, startY, startX+size, startY+size)).Push(ops).Pop()
+func drawSquare(ops *op.Ops, x, y, sizeX, sizeY int, color color.NRGBA) {
+    defer clip.Rect(image.Rect(x, y, x+sizeX, y+sizeY)).Push(ops).Pop()
     paint.ColorOp{Color: color}.Add(ops)
     paint.PaintOp{}.Add(ops)
 }
 
 func draw(w *app.Window) error {
     var ops op.Ops
-    grid := makeGrid(GRID_SIZE)
+    grid := makeGrid(GridColumns, GridRows)
     initRandomGrid(&grid)
-    
+
     lastUpdateTime := time.Now()
     updateInterval := time.Second / time.Duration(FPS)
 
@@ -132,29 +133,32 @@ func draw(w *app.Window) error {
 
             gtx := app.NewContext(&ops, e)
 
+            // Handle key events
             for {
-				event, ok := gtx.Event(key.Filter{Name: key.NameEscape}, key.Filter{Name: key.NameSpace})
-				if !ok {
-					break
-				}
-				switch event := event.(type) {
-				case key.Event:
-					if event.Name == key.NameEscape {
-						return nil
-					}
-                    if event.Name == key.NameSpace {
+                event, ok := gtx.Event(key.Filter{Name: key.NameEscape}, key.Filter{Name: key.NameSpace})
+                if !ok {
+                    break
+                }
+                if keyEvent, isKey := event.(key.Event); isKey {
+                    switch keyEvent.Name {
+                    case key.NameEscape:
+                        return nil
+                    case key.NameSpace:
                         initRandomGrid(&grid)
                     }
-				}
-			}
+                }
+            }
+
             // Clear the screen
-            paint.Fill(gtx.Ops, BACKGROUND_COLOR)
+            paint.Fill(gtx.Ops, BackgroundColor)
 
             // Render the grid
-            for i := 0; i < grid.size; i++ {
-                for j := 0; j < grid.size; j++ {
+            squareWidth := WindowWidth / GridColumns
+            squareHeight := WindowHeight / GridRows
+            for i := 0; i < grid.width; i++ {
+                for j := 0; j < grid.height; j++ {
                     if grid.cells[i][j] {
-                        drawSquare(gtx.Ops, i*SQUARE_SIZE, j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_COLOR)
+                        drawSquare(gtx.Ops, i*squareWidth, j*squareHeight, squareWidth, squareHeight, SquareColor)
                     }
                 }
             }
