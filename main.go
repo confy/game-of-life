@@ -17,7 +17,7 @@ import (
 )
 var (
     WindowWidth = 1000
-    WindowHeight = 250
+    WindowHeight = 500
     GridColumns = 100
     GridRows = GridColumns * WindowHeight / WindowWidth
     FPS = 5.0
