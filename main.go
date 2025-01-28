@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"gioui.org/app"
+	"gioui.org/io/key"
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
@@ -19,7 +20,7 @@ var (
     WINDOW_WIDTH = 1000
     WINDOW_HEIGHT = 1000
     GRID_SIZE = 100
-    FPS = 1.0
+    FPS = 5.0
     SQUARE_SIZE = WINDOW_HEIGHT/GRID_SIZE
     BACKGROUND_COLOR = color.NRGBA{R: 26, G: 26, B: 36, A: 255}
     SQUARE_COLOR = color.NRGBA{R: 63, G: 78, B: 96, A: 255}
@@ -130,7 +131,22 @@ func draw(w *app.Window) error {
             }
 
             gtx := app.NewContext(&ops, e)
-            
+
+            for {
+				event, ok := gtx.Event(key.Filter{Name: key.NameEscape}, key.Filter{Name: key.NameSpace})
+				if !ok {
+					break
+				}
+				switch event := event.(type) {
+				case key.Event:
+					if event.Name == key.NameEscape {
+						return nil
+					}
+                    if event.Name == key.NameSpace {
+                        initRandomGrid(&grid)
+                    }
+				}
+			}
             // Clear the screen
             paint.Fill(gtx.Ops, BACKGROUND_COLOR)
 
